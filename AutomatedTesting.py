@@ -34,11 +34,14 @@ from PIL import Image
 from io import BytesIO
 import get_response
 import numpy as np
+from numba import cuda
+from hummingbird.ml import convert, load #we will be using this for conversion of our clustering algo
+from sklearn.ensemble import IsolationForest
 #import grequests
 http = urllib3.PoolManager()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 gpt2_tokenizer = GPT2Tokenizer.from_pretrained('gpt2')#.to(device)
-device = torch.device("cuda:0")
+
 import torch
 num_of_gpus = torch.cuda.device_count()
 print(num_of_gpus)
@@ -117,15 +120,16 @@ def one():
     b = ['customerToken','searchCustomer.externalId','searchCustomer.firstName2','searchCustomer.lastName2','searchCustomer.companyName','earchCustomer.alertCount','searchCustomer.referralCustomer1Uid']
     c = ['searchCustomer.firstName2','searchCustomer.lastName2','searchCustomer.companyName','earchCustomer.alertCount']
     r = requests.get('https://loyaltyengine1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/resolvedcustomers?',params=a,auth=auth,)
-    
+    d = {"CouponCodes": "a"}
     a=r.json()
     #b = r.params()
     print(r.content)
     print(a)
-    
+    l = requests.post('https://loyaltyengine1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/carts/commands/calculates',params=d,auth=auth)
     p = []#dic['data']
     l1 = []
     success = 0
+    data = []
     for i in range(len(c)):
         #while success != 'success':
         for i in range(200):
@@ -155,6 +159,8 @@ def one():
             #s = requests.post('https://loyaltyengineus1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/Coupons/Changes',auth=auth,data=json.dumps(ff))
             #v = r.json()
             s = requests.get('https://loyaltyengine1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/resolvedcustomers?',params=ff,auth=auth)
+            #ss = requests.get('https://loyaltyengine1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/resolvedcustomers?',params=ff,auth=auth)
+            
             f = s.json()
             print("ff")
             print(ff)
@@ -177,6 +183,7 @@ def one():
             print(reward1)
             
             train_stats = ppo_trainer.step([query_tensor[0]], [response_tensor[0]], reward1)
+            data.append(response_txt)
             
         
     """
@@ -224,11 +231,27 @@ def one():
     note: we should round down to the nearest thousand if it is above a thousand and round to the nearest 100 or 10 if below a thousand because we are assuming our scheme 
     is more effecient then a random sampler. 
     
+    report as of 1/13/2022
+    
+    we cannot get negative examples for even ssl. Therefore we are going to use unsupervised learning
+    Specifically we are going to use stumpy to cluster the inputs and outputs from the API request
+    that we know works. We will then have our TRL algorithm generate test cases for an API request
+    that we dont know works and use stumpys anomoly detection to determine whether any output deviates
+    If none of the output for the new api deviate we will assume the New api is correct. 
+    
+    we can also use scikit learn with hummingbird-ml for the clustering and the outlier detection
+    
+    we may use stumpy later but scikitlearn with hummingbirdd-ml should be easier to implement
+    for both clustering and outlier detection
+    
+    we dont even need to do the clustering step. Just fit on perfectly working data with isoforest
+    and predict on data that comes from API that we have not verified works 
     """
     #print(r.encoding)
     #print(r.text())
     print("c")
     #rr = requests.head('https://loyaltyengine.bloyal.io/swagger/ui/index#!/Carts/GetCartCustomer',auth=('user', 'pass')) #this line is causing problems
+    
 #r.text
 @jit(target_backend='cuda')
 def two():
@@ -240,9 +263,9 @@ def two():
     #_ = gpt2_model.to(device)
     #_ = sentiment_model.to(device)
     #_ = gpt2_model_ref.to(device)
-    query_txt = "this morning I went to "#"00000000-0000-0000-0000-000000000000 "
+    #query_txt = "this morning I went to "#"00000000-0000-0000-0000-000000000000 "
     
-    query_tensor = gpt2_tokenizer.encode(query_txt, return_tensors="pt")
+    #query_tensor = gpt2_tokenizer.encode(query_txt, return_tensors="pt")
 
     # get model response
     
@@ -259,13 +282,16 @@ def two():
     to entropy term to maximize exploration
     
     """
+    
+    #data = []
+    """
     def pos_logit_to_reward(logit, task):
-        """
-        Take the positive sentiment logit and scale it for the task.
-            task [negative]: reward = -logit
-            task [neutral]: reward = -2*abs(logit)+4
-            task [positive]: reward = logit
-        """
+        
+        #Take the positive sentiment logit and scale it for the task.
+            #task [negative]: reward = -logit
+            #task [neutral]: reward = -2*abs(logit)+4
+            #task [positive]: reward = logit
+
         for i in range(len(logit)):
             if task[i]=='[negative]':
                 logit[i] = -logit[i]
@@ -283,9 +309,9 @@ def two():
     reward = -distance.cosine(query_tensor,response_tensor)# *0.5*correctness#-distance.euclidean(query_tensor,response_tensor)
     #reward = -4*reward**2 + 8*reward
     reward = [torch.tensor(reward)] 
+    """
     
     """
-    The final reward will be to create an entry that the contrastive self supervised algorithm concludes (predicts) is in category 1 but gives back an error
     
     + we may also want to consider adding a max ent regularizer that rewards exploration. 
     
@@ -293,8 +319,6 @@ def two():
     that incentivizes wrong sequences with maximum exploration
     
     
-    ignore 3 for now 
-    """
     
     print(reward)
     
@@ -304,12 +328,14 @@ def two():
     train_stats = ppo_trainer.step([query_tensor[0]], [response_tensor[0]], reward)
     response_tensor  = respond_to_batch(gpt2_model, query_tensor)
     response_tx = gpt2_tokenizer.decode(response_tensor[0,:])
+    
     print(train_stats)
     print("as")
     
     print(response_tx)
     print("fa")
     print(response_txt)
+    """
 def three():
     """
     tab_preprocessor = TabPreprocessor(
@@ -320,9 +346,26 @@ def three():
     )
     X_tab = tab_preprocessor.fit_transform(df_tr)
     """
-    X_tab = 0
-    tab_preprocessor = TabPreprocessor()
-    ft_transformer = FTTransformer()
+    
+    # Run predictions on GPU
+
+    #X_tab = 0
+    #data = []
+    #tab_preprocessor = TabPreprocessor()
+    #X_tab = tab_preprocessor.fit_transform(X_tab)
+    #x= np.ones((30,1))
+    X = 0
+    x=1
+    #x = np.array(x,np.float64)
+    skl_model = IsolationForest(random_state=0)
+    skl_model.fit(X)
+    #print("a")
+    model = convert(skl_model, 'pytorch')
+    
+    # Run predictions on GPU
+    model.to('cuda')
+    model.predict(x)    
+    #ft_transformer = FTTransformer()
     """
     column_idx=tab_preprocessor.column_idx,
     cat_embed_input=tab_preprocessor.cat_embed_input,
@@ -331,17 +374,18 @@ def three():
     kv_compression_factor=0.5,
     n_blocks=3,
     n_heads=4,)
-    """
+    
     contrastive_denoising_trainer = ContrastiveDenoisingTrainer(
     model=ft_transformer,
     preprocessor=tab_preprocessor,
     )
     contrastive_denoising_trainer.pretrain(X_tab, n_epochs=5, batch_size=256)
+    """
     
     """
     our two options are fastformer or SAINT. SAINT is the best for performance and fastformer is the most effecient 
     
-    we will start with SAINT
+    we will start with SAINTcfip
     
     """
     
