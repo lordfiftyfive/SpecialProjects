@@ -87,7 +87,7 @@ print("checkpoint 1")
 @jit(target_backend='cuda')
 def one():
     print("starting")
-
+    #j
     #if dtype(u) == np.int: 
     parameters = {
         "a": 's',
