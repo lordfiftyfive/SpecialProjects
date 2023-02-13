@@ -24,8 +24,9 @@ from pyrelational.data import GenericDataManager
 from pytorch_widedeep.self_supervised_training import (
     ContrastiveDenoisingTrainer,
 )
+#asdfasdfasdfa
 from pytorch_widedeep.models import TabFastFormer, WideDeep, FTTransformer
-from pytorch_widedeep.preprocessing import TabPreprocessor
+from pytorch_widedeep.preprocessing import TabPreprocessor, TextPreprocessor
 from pytorch_widedeep.datasets import load_adult
 from scipy.spatial import distance
 from numba import jit
@@ -37,12 +38,13 @@ import numpy as np
 from numba import cuda
 from hummingbird.ml import convert, load #we will be using this for conversion of our clustering algo
 from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
+import pandas as pd
 #import grequests
 http = urllib3.PoolManager()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 gpt2_tokenizer = GPT2Tokenizer.from_pretrained('gpt2')#.to(device)
 
-import torch
 num_of_gpus = torch.cuda.device_count()
 print(num_of_gpus)
 print(torch.cuda.get_device_name(device=device))
@@ -76,7 +78,8 @@ print(target)
 """
 gpt2_model = GPT2HeadWithValueModel.from_pretrained('gpt2')#.to(device)
 gpt2_model_ref = GPT2HeadWithValueModel.from_pretrained('gpt2')#.to(device)
-
+auth = OAuth1('de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2')
+    
 #gpt2_tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
 #_ = gpt2_model.to(device)
 #_ = sentiment_model.to(device)
@@ -130,9 +133,17 @@ def one():
     l1 = []
     success = 0
     data = []
+    p = []#dic['data']
+    l1 = []
+    success = 0
+    data = []
+    y1 = []
+    y2=[]
+    d2 = []
+    d3 = []
     for i in range(len(c)):
         #while success != 'success':
-        for i in range(200):
+        for i in range(5):
                 
             query_txt = "aaaaaaaaaaaaaaaaaaa"
             query_tensor = gpt2_tokenizer.encode(query_txt, return_tensors="pt")
@@ -158,9 +169,10 @@ def one():
             
             #s = requests.post('https://loyaltyengineus1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/Coupons/Changes',auth=auth,data=json.dumps(ff))
             #v = r.json()
+            #l = requests.post('https://loyaltyengine1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/carts/commands/calculates',params=d,auth=auth)
             s = requests.get('https://loyaltyengine1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/resolvedcustomers?',params=ff,auth=auth)
             #ss = requests.get('https://loyaltyengine1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/resolvedcustomers?',params=ff,auth=auth)
-            
+            d2.append(response_tensor)
             f = s.json()
             print("ff")
             print(ff)
@@ -172,7 +184,11 @@ def one():
             success = f['status']
             print(success)
             print("d")
+            y1.append(success)
+            y2.append(f)
             reward1 = 0
+            dat = s.text
+            d3.append(dat)
             if success == 'success':#'error':#
                 reward1=500
             else:
@@ -184,8 +200,8 @@ def one():
             
             train_stats = ppo_trainer.step([query_tensor[0]], [response_tensor[0]], reward1)
             data.append(response_txt)
+    return data, d2, y1,y2,d3
             
-        
     """
     we will probably need to wrap this entire function into a while loop
     
@@ -249,7 +265,8 @@ def one():
     """
     #print(r.encoding)
     #print(r.text())
-    print("c")
+    #print("c")
+    #return data,y1,y2
     #rr = requests.head('https://loyaltyengine.bloyal.io/swagger/ui/index#!/Carts/GetCartCustomer',auth=('user', 'pass')) #this line is causing problems
     
 #r.text
@@ -318,8 +335,6 @@ def two():
     we may want to consider doing two stages of training with trl before this: one where trl tries generating correct sequences with its own reward and one with a reward
     that incentivizes wrong sequences with maximum exploration
     
-    
-    
     print(reward)
     
     # initialize trainer
@@ -330,7 +345,6 @@ def two():
     response_tx = gpt2_tokenizer.decode(response_tensor[0,:])
     
     print(train_stats)
-    print("as")
     
     print(response_tx)
     print("fa")
@@ -346,27 +360,89 @@ def three():
     )
     X_tab = tab_preprocessor.fit_transform(df_tr)
     """
+    data,d2,y1,y2,d3 = one()
     
-    # Run predictions on GPU
+    #y1 is whether there was a sucess or failiure y2 is the paramter returned, d2 is
+    
+    #clf = LocalOutlierFactor(n_neighbors=len(y1),novelty=True)
+    #clf.fit(y1)
+    #clf2 = LocalOutlierFactor(n_neighbors=len(y1),novelty=True)
+    #test = np.zeros(20).reshape(-1, 1)
+    #a = clf.predict(test)
+    #print(y1.shape)
+    
+    #Beginning of final component of final stage
+    c = ['searchCustomer.firstName2','searchCustomer.lastName2','searchCustomer.companyName','earchCustomer.alertCount']
+    pp = pd.DataFrame(d3,columns=['text_column'])
+    text_preprocessor = TextPreprocessor(text_col='text_column')
+    data = text_preprocessor.fit_transform(pp)
+    clf = LocalOutlierFactor(n_neighbors=len(data),novelty=True)
+    clf.fit(data)
+    test = []
+    p=[]
+    for i in range(len(c)):
+        #while success != 'success':
+        for u in range(20):
+            print("f")
+            query_txt = "aaaaaaaaaaaaaaaaaaa"
+            query_tensor = gpt2_tokenizer.encode(query_txt, return_tensors="pt")
+            #print("checkpoint 2")
+            response_tensor  = respond_to_batch(gpt2_model, query_tensor)
+            response_txt = gpt2_tokenizer.decode(response_tensor[0,:])
+            p.append(response_txt)
+            #l1.append(u)
+    
+            #p.update(u=response_txt)
+            print(p)
+            print("a")
+            #L1 = dic['data']#np.array(dic['data']).ravel()#['a','b','c','d']
+            #L1 = np.array(L1)
+            #L2 = [1,2,3,4]
+            #d = dict(zip(l1,L2))
+            ff = dict(zip([c[i]],[p]))
+            #r = requests.get('https://loyaltyengineus1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/ResolvedCustomers?quickSearch=subarno@bloyal.com',auth=auth,data=json.dumps(d))
+            #f =  requests.get('https://loyaltyengineus1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/ResolvedCustomers?quickSearch=subarno@bloyal.com',auth=auth,data=json.dumps(ff))#('user', 'pass')
+            
+            #r = requests.get('https://loyaltyengineus1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/ResolvedCustomers?quickSearch=subarno@bloyal.com',auth=auth,data=json.dumps(p))
+            #f = requests.get('https://loyaltyengineus1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/ResolvedCustomers?quickSearch=subarno@bloyal.com',auth=auth,data=json.dumps(ff))
+            
+            #s = requests.post('https://loyaltyengineus1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/Coupons/Changes',auth=auth,data=json.dumps(ff))
+            #v = r.json()
+            #s = requests.get('https://loyaltyengine1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/resolvedcustomers?',params=ff,auth=auth)
+            s = requests.get('https://loyaltyengine1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/resolvedcustomers?',params=ff,auth=auth)
+            f = s.json()
+            text = s.text
+            text = pd.DataFrame(text,columns =['text_column'])
+            text_preprocessor = TextPreprocessor(text_col='text_column')
+            data = text_preprocessor.fit_transform(text)
+            print("ff")
+            print(ff)
+            print(f)
+            #fail = f['status']
+            print("fai")
+            #print(fail)
+            success = f['status']
+            print(success)
+            print("d")
+            reward1 = 0
+            #text_preprocessor = TextPreprocessor(text_col='text_column')
+            #data = text_preprocessor.fit_transform(f[i])
+            #we only want to select the y[ith] parameter on each epoch
+            a = clf.predict(data)
+            if success == 'success' and a==1: #'error':#
+                reward1=-500
+            else:
+                reward1=500
+            reward1 = [torch.tensor(reward1)]
 
-    #X_tab = 0
-    #data = []
-    #tab_preprocessor = TabPreprocessor()
-    #X_tab = tab_preprocessor.fit_transform(X_tab)
-    #x= np.ones((30,1))
-    X = 0
-    x=1
-    #x = np.array(x,np.float64)
-    skl_model = IsolationForest(random_state=0)
-    skl_model.fit(X)
-    #print("a")
-    model = convert(skl_model, 'pytorch')
+            #reward1 = rewardOne()
+            print(reward1)
+            
+            train_stats = ppo_trainer.step([query_tensor[0]], [response_tensor[0]], reward1)  
     
-    # Run predictions on GPU
-    model.to('cuda')
-    model.predict(x)    
-    #ft_transformer = FTTransformer()
     """
+
+    #ft_transformer = FTTransformer()
     column_idx=tab_preprocessor.column_idx,
     cat_embed_input=tab_preprocessor.cat_embed_input,
     continuous_cols=tab_preprocessor.continuous_cols,
@@ -417,5 +493,5 @@ def three():
     strategy.full_active_learning_run(num_annotate=100)
     print(strategy)
 """
-one()
-#two()
+three()
+#one()
