@@ -40,11 +40,23 @@ from hummingbird.ml import convert, load #we will be using this for conversion o
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 import pandas as pd
+from transformers import AutoTokenizer
+import lox
+
+import taichi as ti
+import taichi.math as tm
+"""
+from spacy.tokenizer import Tokenizer
+from spacy.lang.en import English
+
+nlp = English()
+tokenizer = Tokenizer(nlp.vocab)
+"""
 #import grequests
 http = urllib3.PoolManager()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 gpt2_tokenizer = GPT2Tokenizer.from_pretrained('gpt2')#.to(device)
-
+ti.init(arch=ti.gpu)
 num_of_gpus = torch.cuda.device_count()
 print(num_of_gpus)
 print(torch.cuda.get_device_name(device=device))
@@ -87,7 +99,10 @@ auth = OAuth1('de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4
 #_ = gpt2_tokenizer.to(device)
 ppo_trainer = PPOTrainer(gpt2_model, gpt2_model_ref, gpt2_tokenizer, **ppo_config)
 print("checkpoint 1")
-@jit(target_backend='cuda')
+#@jit(target_backend='cuda')
+#@lox.thread(14)
+
+#@ti.func
 def one():
     print("starting")
     #j
@@ -270,7 +285,8 @@ def one():
     #rr = requests.head('https://loyaltyengine.bloyal.io/swagger/ui/index#!/Carts/GetCartCustomer',auth=('user', 'pass')) #this line is causing problems
     
 #r.text
-@jit(target_backend='cuda')
+#@jit(target_backend='cuda')
+#@ti.kernel
 def two():
     
     # get models
@@ -350,6 +366,7 @@ def two():
     print("fa")
     print(response_txt)
     """
+@lox.thread(14)
 def three():
     """
     tab_preprocessor = TabPreprocessor(
@@ -370,12 +387,18 @@ def three():
     #test = np.zeros(20).reshape(-1, 1)
     #a = clf.predict(test)
     #print(y1.shape)
-    
+    #tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
     #Beginning of final component of final stage
     c = ['searchCustomer.firstName2','searchCustomer.lastName2','searchCustomer.companyName','earchCustomer.alertCount']
     pp = pd.DataFrame(d3,columns=['text_column'])
-    text_preprocessor = TextPreprocessor(text_col='text_column')
-    data = text_preprocessor.fit_transform(pp)
+    data = gpt2_tokenizer.encode(pp, return_tensors="pt")
+    #gpt2_tokenizer.encode(query_txt, return_tensors="pt")
+    
+    #pp = pd.DataFrame(d3,columns=['text_column'])
+    
+    #text_preprocessor = TextPreprocessor(text_col='text_column')
+    #data = text_preprocessor.fit_transform(pp)
+    
     clf = LocalOutlierFactor(n_neighbors=len(data),novelty=True)
     clf.fit(data)
     test = []
@@ -412,7 +435,7 @@ def three():
             s = requests.get('https://loyaltyengine1.bloyal.com/api/v4/de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2/resolvedcustomers?',params=ff,auth=auth)
             f = s.json()
             text = s.text
-            text = pd.DataFrame(text,columns =['text_column'])
+            text = pd.DataFrame(text[i],columns =['text_column'])
             text_preprocessor = TextPreprocessor(text_col='text_column')
             data = text_preprocessor.fit_transform(text)
             print("ff")
@@ -423,10 +446,12 @@ def three():
             #print(fail)
             success = f['status']
             print(success)
-            print("d")
+            print("d")#filelist = glob.glob(path + "/*.csv")
             reward1 = 0
+            #tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
             #text_preprocessor = TextPreprocessor(text_col='text_column')
-            #data = text_preprocessor.fit_transform(f[i])
+            #data = tokenizer.fit_transform(f[i])
+            print(data)
             #we only want to select the y[ith] parameter on each epoch
             a = clf.predict(data)
             if success == 'success' and a==1: #'error':#
