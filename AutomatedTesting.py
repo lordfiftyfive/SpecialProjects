@@ -107,6 +107,7 @@ def one():
     print("starting")
     #j
     #if dtype(u) == np.int: 
+    """
     parameters = {
         "a": 's',
         "b": 'subarnos@'
@@ -116,6 +117,7 @@ def one():
         }
     a = json.dumps(parameters)
     #print(a)
+    """
     auth = OAuth1('de4cf57cfc45184510c627de9d01324ad13d95ddafc751024597bffa74af43ae4f793bdc6a8c5eb1c6364eb2')
     
     #t = requests.get('https://loyaltyengine.bloyal.io/swagger/ui/index#!/Clubs/Changes',auth=auth)#,data=parameters) 
@@ -156,6 +158,7 @@ def one():
     y2=[]
     d2 = []
     d3 = []
+    #ti.loop_config(parallelize=8)#, block_dim=16)
     for i in range(len(c)):
         #while success != 'success':
         for i in range(5):
@@ -360,13 +363,12 @@ def two():
     response_tensor  = respond_to_batch(gpt2_model, query_tensor)
     response_tx = gpt2_tokenizer.decode(response_tensor[0,:])
     
-    print(train_stats)
-    
-    print(response_tx)
-    print("fa")
-    print(response_txt)
     """
-@lox.thread(14)
+#
+
+#@ti.kernel
+#@lox.thread(14)
+@ti.data_oriented
 def three():
     """
     tab_preprocessor = TabPreprocessor(
@@ -377,7 +379,7 @@ def three():
     )
     X_tab = tab_preprocessor.fit_transform(df_tr)
     """
-    data,d2,y1,y2,d3 = one()
+    
     
     #y1 is whether there was a sucess or failiure y2 is the paramter returned, d2 is
     
@@ -386,9 +388,8 @@ def three():
     #clf2 = LocalOutlierFactor(n_neighbors=len(y1),novelty=True)
     #test = np.zeros(20).reshape(-1, 1)
     #a = clf.predict(test)
-    #print(y1.shape)
-    #tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
     #Beginning of final component of final stage
+    data,d2,y1,y2,d3 = one()
     c = ['searchCustomer.firstName2','searchCustomer.lastName2','searchCustomer.companyName','earchCustomer.alertCount']
     pp = pd.DataFrame(d3,columns=['text_column'])
     data = gpt2_tokenizer.encode(pp, return_tensors="pt")
@@ -398,11 +399,17 @@ def three():
     
     #text_preprocessor = TextPreprocessor(text_col='text_column')
     #data = text_preprocessor.fit_transform(pp)
-    
+    print("checkpoint 2")
     clf = LocalOutlierFactor(n_neighbors=len(data),novelty=True)
     clf.fit(data)
     test = []
     p=[]
+    
+    ti.loop_config(block_dim=16,parallelize=8)
+    
+    #val = ti.field(ti.i32, shape=len(c))
+    #vall = ti.field(ti.i32, shape=20)
+   
     for i in range(len(c)):
         #while success != 'success':
         for u in range(20):
@@ -447,10 +454,12 @@ def three():
             success = f['status']
             print(success)
             print("d")#filelist = glob.glob(path + "/*.csv")
+            print("data")
             reward1 = 0
             #tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
             #text_preprocessor = TextPreprocessor(text_col='text_column')
             #data = tokenizer.fit_transform(f[i])
+
             print(data)
             #we only want to select the y[ith] parameter on each epoch
             a = clf.predict(data)
