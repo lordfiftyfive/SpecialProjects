@@ -159,6 +159,7 @@ def one():
     d2 = []
     d3 = []
     #ti.loop_config(parallelize=8)#, block_dim=16)
+    print("start of loop 2")
     for i in range(len(c)):
         #while success != 'success':
         for i in range(5):
@@ -218,6 +219,7 @@ def one():
             
             train_stats = ppo_trainer.step([query_tensor[0]], [response_tensor[0]], reward1)
             data.append(response_txt)
+            print("loop 1 end")
     return data, d2, y1,y2,d3
             
     """
@@ -389,19 +391,31 @@ def three():
     #test = np.zeros(20).reshape(-1, 1)
     #a = clf.predict(test)
     #Beginning of final component of final stage
+    
     data,d2,y1,y2,d3 = one()
     c = ['searchCustomer.firstName2','searchCustomer.lastName2','searchCustomer.companyName','earchCustomer.alertCount']
-    pp = pd.DataFrame(d3,columns=['text_column'])
-    data = gpt2_tokenizer.encode(pp, return_tensors="pt")
+    #print(d3.items())
+    print("start of 3")
+    print(d2)
+    print(d3)
+    #pp = pd.DataFrame(d3,columns=['text_column'])
+    print("checkpoint 2")
+    #print(d2)
+    
+    #print(d3)
+    print(data)
+    #print(pp)
+    #data = gpt2_tokenizer.encode(pp, return_tensors="pt")
     #gpt2_tokenizer.encode(query_txt, return_tensors="pt")
     
-    #pp = pd.DataFrame(d3,columns=['text_column'])
+    pp = pd.DataFrame(d3,columns=['text_column'])
     
-    #text_preprocessor = TextPreprocessor(text_col='text_column')
-    #data = text_preprocessor.fit_transform(pp)
-    print("checkpoint 2")
-    clf = LocalOutlierFactor(n_neighbors=len(data),novelty=True)
-    clf.fit(data)
+    text_preprocessor = TextPreprocessor(text_col='text_column')
+    d4 = text_preprocessor.fit_transform(pp)
+    d4 = pd.DataFrame(d4)
+    #data = data.reshape(-1, 1)
+    clf = LocalOutlierFactor(n_neighbors=len(d4),novelty=True)
+    clf.fit(d4)
     test = []
     p=[]
     
@@ -409,7 +423,7 @@ def three():
     
     #val = ti.field(ti.i32, shape=len(c))
     #vall = ti.field(ti.i32, shape=20)
-   
+    print("")
     for i in range(len(c)):
         #while success != 'success':
         for u in range(20):
@@ -444,7 +458,8 @@ def three():
             text = s.text
             text = pd.DataFrame(text[i],columns =['text_column'])
             text_preprocessor = TextPreprocessor(text_col='text_column')
-            data = text_preprocessor.fit_transform(text)
+            data = gpt2_tokenizer.encode(text)
+            
             print("ff")
             print(ff)
             print(f)
@@ -463,14 +478,7 @@ def three():
             print(data)
             #we only want to select the y[ith] parameter on each epoch
             a = clf.predict(data)
-            if success == 'success' and a==1: #'error':#
-                reward1=-500
-            else:
-                reward1=500
-            reward1 = [torch.tensor(reward1)]
-
-            #reward1 = rewardOne()
-            print(reward1)
+            print(a)
             
             train_stats = ppo_trainer.step([query_tensor[0]], [response_tensor[0]], reward1)  
     
