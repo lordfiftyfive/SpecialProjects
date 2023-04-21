@@ -19,8 +19,8 @@ from pyrelational.strategies.task_agnostic.relative_distance_strategy import (
     RelativeDistanceStrategy,
 )
 from transformers import GPT2Tokenizer
-from pyrelational.models import LightningModel
-from pyrelational.data import GenericDataManager
+#from pyrelational.models import LightningModel
+#from pyrelational.data import GenericDataManager
 from pytorch_widedeep.self_supervised_training import (
     ContrastiveDenoisingTrainer,
 )
