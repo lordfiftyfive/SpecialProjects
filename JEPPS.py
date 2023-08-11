@@ -4,7 +4,7 @@ Created on Thu Jul  9 21:50:28 2020
 
 @author: subar
 """
-
+import cudf  
 from tensorflow import keras 
 #import gpflow
 import tensorflow as tf
