@@ -1,0 +1,4 @@
+{
+  "enable": true,
+  "updateInterval": 3000
+}
