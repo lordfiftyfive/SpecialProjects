@@ -284,4 +284,3 @@ p5 = plot(xs, ys, diff_u_, linetype = :contourf, title = "error 2");
 plot(p1, p2, p3, p4, p5)
 """
 """
-#"\\wsl.localhost\Ubuntu\root\.elan\toolchains\leanprover--lean4---v4.4.0-rc1\src\lean\lake\lakefile.lean"a
