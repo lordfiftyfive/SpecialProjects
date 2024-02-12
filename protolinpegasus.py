@@ -71,7 +71,7 @@ from laplace.curvature.backpack import BackPackGGN
 
 #hyperparameter optimization
 from ray import tune
-import ax
+#import ax
 
 #deplyoyment
 import mlflow
@@ -80,8 +80,8 @@ note: there is a very useful wrapper in jaxmarl that allows us to convert gymnax
 
 """
 
-optimizer =  DAdaptAdaGrad
-opt= t2j(optimizer)
+#optimizer =  DAdaptAdaGrad
+#opt= t2j(optimizer)
 
 config = OmegaConf.create({
     "NUM_ENVS": 8,
